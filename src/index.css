@@ -1,0 +1,301 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.react-flow__node {
+  background: white;
+  border-radius: 0px;
+  width: 2.0rem;
+  height: 2.0rem;
+  min-width: 2.0rem;
+  min-height: 2.0rem;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.react-flow__node:hover {
+  cursor: pointer !important;
+}
+
+.react-flow__node.selected > div,
+.react-flow__node.selected .h-8 {
+  border-color: #ef4444 !important;
+  border-width: 1px !important;
+}
+
+.react-flow__node.dragging,
+.react-flow__node.dragging:hover,
+.react-flow__node[data-dragging="true"],
+.react-flow__node[data-dragging="true"]:hover {
+  cursor: grabbing !important;
+}
+
+.react-flow__node > * {
+  box-shadow: none !important;
+  border-radius: 2px;
+  cursor: pointer !important;
+}
+
+.react-flow__node.dragging > *,
+.react-flow__node[data-dragging="true"] > * {
+  cursor: grabbing !important;
+}
+
+/* Handle cursor when dragging anywhere on the canvas */
+body.react-flow__node-dragging {
+  cursor: grabbing !important;
+}
+
+
+.react-flow__edge {
+  stroke: #000000 !important;
+  stroke-width: 0.4 !important;
+  cursor: pointer !important;
+}
+
+.react-flow__edge:hover {
+  cursor: pointer !important;
+}
+
+.react-flow__edge.selected {
+  stroke: #d3d3d3 !important;
+  stroke-width: 0.4 !important;
+}
+
+/* Arrow marker default color - black */
+/* Target React Flow default markers in SVG defs */
+svg defs marker[id*="arrow"] path,
+svg defs marker[id*="Arrow"] path,
+svg defs marker[id*="react-flow"] path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+  transform: scale(3.5);
+  transform-origin: center;
+}
+
+/* Target markers directly on edges - default black */
+.react-flow__edge marker path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+  transform: scale(3.5);
+  transform-origin: center;
+}
+
+.react-flow__edge marker[id*="arrow"] path,
+.react-flow__edge marker[id*="Arrow"] path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+  transform: scale(3.5);
+  transform-origin: center;
+}
+
+/* Arrow marker color when edge is selected - black */
+.react-flow__edge.selected marker path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+.react-flow__edge.selected marker[id*="arrow"] path,
+.react-flow__edge.selected marker[id*="Arrow"] path {
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* Ensure marker viewBox accommodates larger size */
+.react-flow__edge marker {
+  overflow: visible;
+}
+
+/* Input connectors (target handles) - Yellow */
+.react-flow__handle[data-handlepos="left"],
+.react-flow__handle[data-handlepos="top"],
+.react-flow__handle[data-handlepos="bottom"] {
+  background: #f4febd !important;
+  border: 1px solid #000 !important;
+  cursor: crosshair !important;
+}
+
+/* Output connectors (source handles) - Green */
+.react-flow__handle[data-handlepos="right"] {
+  background: #c1fdbf !important;
+  border: 1px solid #000 !important;
+  cursor: crosshair !important;
+}
+
+/* General handle styling - override inline styles */
+.react-flow__handle {
+  cursor: crosshair !important;
+}
+
+.react-flow__handle.connecting {
+  @apply bg-green-500;
+}
+
+.react-flow__handle.valid {
+  @apply bg-green-500;
+}
+
+.react-flow__handle.invalid {
+  @apply bg-red-500;
+}
+
+.react-flow__controls {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600;
+}
+
+.react-flow__controls-button {
+  @apply bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600;
+}
+
+.react-flow__controls-button:hover {
+  @apply bg-gray-50 dark:bg-gray-700;
+}
+
+.react-flow__background {
+  @apply bg-gray-50 dark:bg-gray-900;
+}
+
+/* MathLive field styling */
+math-field {
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  resize: none !important;
+  overflow: visible !important;
+  border: 2px solid #d1d5db !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  min-height: 0px !important;
+  max-height: 100% !important;
+}
+
+math-field:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* MathLive internal elements styling */
+math-field .ML__container {
+  height: 100% !important;
+}
+
+math-field .ML__toggles {
+  align-self: center !important;
+}
+
+/* Ensure MathLive tooltips are visible */
+math-field [data-tooltip],
+math-field .ML__tooltip,
+math-field .tooltip,
+math-field [title] {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
+/* Global tooltip visibility for elements that might escape shadow DOM */
+body > [role="tooltip"],
+body > .tooltip,
+body > [data-tooltip] {
+  z-index: 99999 !important;
+  position: fixed !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Hide edge labels (values on connectors) */
+.react-flow__edge-label {
+  display: none !important;
+}
+
+.react-flow__edge-labelwrapper {
+  display: none !important;
+}
+
+.react-flow__edge-label-bg {
+  display: none !important;
+}
+
+.react-flow__edge-text {
+  display: none !important;
+}
+
+.react-flow__edge-textwrapper {
+  display: none !important;
+}
+
+/* Hide all edge label related elements */
+[class*="react-flow__edge-label"] {
+  display: none !important;
+}
+
+[class*="react-flow__edge-text"] {
+  display: none !important;
+}
+
+/* Hide MathLive section initially */
+.mathlive-section {
+  visibility: hidden;
+}
+
+/* Show MathLive section when connector is active */
+.mathlive-section.active {
+  visibility: visible;
+}
+
+/* Math edge label styling for rendered LaTeX */
+.math-edge-label {
+  font-family: 'Times New Roman', serif;
+  font-weight: 400;
+  color: #000000;
+}
+
+/* Style the read-only math-field in edge labels */
+.math-edge-label math-field {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-width: auto !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-block !important;
+  font-size: 10px !important;
+  color: #000000 !important;
+}
+
+/* Remove any focus styles from read-only math field */
+.math-edge-label math-field:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure the math content displays properly */
+.math-edge-label math-field::part(content) {
+  padding: 0 !important;
+  padding-bottom: 5px !important;
+}
+
+/* Cursor styles for node dragging */
+.react-flow.react-flow__node-dragging,
+.react-flow.react-flow__node-dragging * {
+  cursor: grabbing !important;
+}
+
+.math-edge-label math-field::part(container) {
+  min-height: auto !important;
+}
