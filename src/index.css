@@ -4,6 +4,44 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Edge style CSS variables */
+  --edge-stroke-default: #000000;
+  --edge-stroke-selected: #ef4444;
+  --edge-stroke-width: 0.4;
+  --edge-stroke-dasharray: none;
+  
+  /* Node style CSS variables */
+  --node-size: 2rem;
+  --node-bg: #ffffff;
+  --node-border-default: #000000;
+  --node-border-selected: #ef4444;
+  --node-border-radius: 3px;
+  
+  /* Toolbar CSS variables */
+  --toolbar-height: 5rem;
+  --toolbar-button-size: 3rem;
+  --toolbar-bg: #ffffff;
+  --toolbar-button-bg: #e2e8f0;
+  --toolbar-button-border: #cbd5e1;
+  
+  /* Sidebar CSS variables */
+  --sidebar-width: 20rem;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  
+  /* Color CSS variables */
+  --color-green: #16a34a;
+  --color-red: #dc2626;
+  --color-blue: #2563eb;
+  --color-orange: #ea580c;
+  --color-purple: #9333ea;
+  --color-pink: #db2777;
+  --color-teal: #14b8a6;
+  --color-slate: #475569;
+  --color-indigo: #4f46e5;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -55,9 +93,10 @@ body.react-flow__node-dragging {
 }
 
 
+/* Edge styles using CSS variables */
 .react-flow__edge {
-  stroke: #000000 !important;
-  stroke-width: 0.4 !important;
+  stroke: var(--edge-stroke-default) !important;
+  stroke-width: var(--edge-stroke-width) !important;
   cursor: pointer !important;
 }
 
@@ -66,8 +105,25 @@ body.react-flow__node-dragging {
 }
 
 .react-flow__edge.selected {
-  stroke: #d3d3d3 !important;
-  stroke-width: 0.4 !important;
+  stroke: var(--edge-stroke-selected) !important;
+  stroke-width: var(--edge-stroke-width) !important;
+}
+
+/* Edge style classes for programmatic use */
+.edge-style-default {
+  stroke: var(--edge-stroke-default);
+  stroke-width: var(--edge-stroke-width);
+}
+
+.edge-style-selected {
+  stroke: var(--edge-stroke-selected);
+  stroke-width: var(--edge-stroke-width);
+}
+
+.edge-style-with-dash {
+  stroke: var(--edge-stroke-default);
+  stroke-width: var(--edge-stroke-width);
+  stroke-dasharray: var(--edge-stroke-dasharray);
 }
 
 /* Arrow marker default color - black */
@@ -114,25 +170,141 @@ svg defs marker[id*="react-flow"] path {
   overflow: visible;
 }
 
-/* Input connectors (target handles) - Yellow */
-.react-flow__handle[data-handlepos="left"],
-.react-flow__handle[data-handlepos="top"],
-.react-flow__handle[data-handlepos="bottom"] {
-  background: #f4febd !important;
+/* Handle base styles */
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
   border: 1px solid #000 !important;
   cursor: crosshair !important;
+}
+
+/* Input connectors (target handles) - Yellow */
+.handle-input {
+  background: #f4febd !important;
 }
 
 /* Output connectors (source handles) - Green */
-.react-flow__handle[data-handlepos="right"] {
+.handle-output {
   background: #c1fdbf !important;
-  border: 1px solid #000 !important;
-  cursor: crosshair !important;
 }
 
-/* General handle styling - override inline styles */
-.react-flow__handle {
-  cursor: crosshair !important;
+/* Handle positions - Left side (input) */
+.handle-left-center {
+  left: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.handle-left-top {
+  left: -4px !important;
+  top: 25% !important;
+}
+
+.handle-left-bottom {
+  left: -4px !important;
+  top: 75% !important;
+}
+
+/* Handle positions - Right side (output) */
+.handle-right-center {
+  right: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Combined handle styles for React Flow Handles */
+.handle-input-left-center {
+  background: #f4febd !important;
+  border: 1px solid #000 !important;
+  width: 8px !important;
+  height: 8px !important;
+  left: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.handle-input-left-top {
+  background: #f4febd !important;
+  border: 1px solid #000 !important;
+  width: 8px !important;
+  height: 8px !important;
+  left: -4px !important;
+  top: 25% !important;
+}
+
+.handle-input-left-bottom {
+  background: #f4febd !important;
+  border: 1px solid #000 !important;
+  width: 8px !important;
+  height: 8px !important;
+  left: -4px !important;
+  top: 75% !important;
+}
+
+.handle-output-right-center {
+  background: #c1fdbf !important;
+  border: 1px solid #000 !important;
+  width: 8px !important;
+  height: 8px !important;
+  right: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Visual handle indicators for toolbar buttons */
+.handle-indicator-right-center {
+  right: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.handle-indicator-left-center {
+  left: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+.handle-indicator-left-top {
+  left: -4px !important;
+  top: 25% !important;
+}
+
+.handle-indicator-left-bottom {
+  left: -4px !important;
+  top: 75% !important;
+}
+
+/* MathLive read-only field styles */
+.mathlive-readonly {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  color: #000000 !important;
+  display: flex !important;
+  flex-direction: column-reverse !important;
+  min-width: auto !important;
+  pointer-events: none !important;
+}
+
+/* MathLive editable field styles */
+.mathlive-editable {
+  height: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  min-height: 0px !important;
+  overflow: visible !important;
+  resize: none !important;
+  box-sizing: border-box !important;
+  border: 2px solid #d1d5db !important;
+  padding: 8px 12px !important;
+}
+
+/* Edge label base styles (transform is dynamic, applied inline) */
+.edge-label-base {
+  position: absolute;
 }
 
 .react-flow__handle.connecting {
@@ -161,6 +333,13 @@ svg defs marker[id*="react-flow"] path {
 
 .react-flow__background {
   @apply bg-gray-50 dark:bg-gray-900;
+}
+
+/* ReactFlow container */
+.react-flow-container {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
 }
 
 /* MathLive field styling */
@@ -204,14 +383,18 @@ math-field [title] {
 }
 
 /* Global tooltip visibility for elements that might escape shadow DOM */
+/* Tooltips for MathLive virtual keyboard and menu toggles */
+[role="tooltip"],
+[data-tooltip],
+[class*="tooltip"],
 body > [role="tooltip"],
 body > .tooltip,
 body > [data-tooltip] {
   z-index: 99999 !important;
-  position: fixed !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+  position: fixed !important;
 }
 
 /* Hide edge labels (values on connectors) */
@@ -259,6 +442,18 @@ body > [data-tooltip] {
   font-family: 'Times New Roman', serif;
   font-weight: 400;
   color: #000000;
+  position: absolute;
+  pointer-events: all;
+  background: transparent;
+  padding: 0px 2px;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: left;
+}
+
+/* Node symbol display */
+.node-symbol {
+  display: contents;
 }
 
 /* Style the read-only math-field in edge labels */
@@ -299,3 +494,381 @@ body > [data-tooltip] {
 .math-edge-label math-field::part(container) {
   min-height: auto !important;
 }
+
+/* ============================================
+   Node Styles
+   ============================================ */
+
+/* Base node container */
+.node-container {
+  height: var(--node-size);
+  width: var(--node-size);
+  background: var(--node-bg);
+  border: 1px solid var(--node-border-default);
+  border-radius: var(--node-border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.node-container.selected {
+  border-color: var(--node-border-selected);
+}
+
+/* Node symbol styles */
+.node-symbol-base {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Remove display from .node-symbol-base when .node-symbol is also present */
+.node-symbol-base.node-symbol {
+  display: contents;
+}
+
+.node-symbol-green {
+  color: var(--color-green);
+}
+
+.node-symbol-red {
+  color: var(--color-red);
+}
+
+.node-symbol-blue {
+  color: var(--color-blue);
+}
+
+.node-symbol-orange {
+  color: var(--color-orange);
+}
+
+.node-symbol-purple {
+  color: var(--color-purple);
+}
+
+.node-symbol-pink {
+  color: var(--color-pink);
+}
+
+.node-symbol-teal {
+  color: var(--color-teal);
+}
+
+.node-symbol-slate {
+  color: var(--color-slate);
+}
+
+.node-symbol-indigo {
+  color: var(--color-indigo);
+}
+
+.node-symbol-xl {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.node-symbol-sm {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.node-symbol-xs {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.node-symbol-flex-col {
+  flex-direction: column;
+}
+
+.node-symbol-superscript {
+  font-size: 0.75rem;
+}
+
+.node-symbol-divider {
+  border-top: 1px solid white;
+}
+
+.form-section-content-spacing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ============================================
+   Toolbar Styles
+   ============================================ */
+
+.toolbar-header {
+  height: var(--toolbar-height);
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--sidebar-border);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  overflow-x: auto;
+}
+
+.toolbar-buttons-container {
+  display: flex;
+  gap: 0.75rem;
+  min-width: max-content;
+}
+
+.toolbar-button {
+  flex-shrink: 0;
+}
+
+.toolbar-button-inner {
+  position: relative;
+}
+
+.toolbar-button-box {
+  height: var(--toolbar-button-size);
+  width: var(--toolbar-button-size);
+  background: var(--toolbar-button-bg);
+  border: 1px solid var(--toolbar-button-border);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.toolbar-handle-indicator {
+  position: absolute;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border-default);
+  border-radius: 50%;
+}
+
+/* ============================================
+   Layout Styles
+   ============================================ */
+
+.app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  border-left: 1px solid var(--sidebar-border);
+  padding: 1rem;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ============================================
+   Button Styles
+   ============================================ */
+
+.btn-primary {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-blue);
+  color: white;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  width: 100%;
+  padding: 0.5rem;
+  background: #ef4444;
+  color: white;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 0.5rem;
+  background: #6b7280;
+  color: white;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}
+
+.btn-export {
+  width: 100%;
+  padding: 0.625rem;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 2px solid #16a34a;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  font-weight: 600;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
+
+.btn-export:hover {
+  background: #dcfce7;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-import {
+  width: 100%;
+  padding: 0.625rem;
+  background: #eff6ff;
+  color: #1e40af;
+  border: 2px solid #2563eb;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  font-weight: 600;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
+
+.btn-import:hover {
+  background: #dbeafe;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   Form Styles
+   ============================================ */
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-section {
+  padding-top: 1rem;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.form-section-title {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.form-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.form-divider {
+  border-top: 1px solid var(--sidebar-border);
+  padding-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Shadow DOM Styles for MathLive
+   These styles are injected into Shadow DOM at runtime.
+   They are defined here for reference and maintenance.
+   ============================================ */
+
+/* MathLive Edge Label Shadow DOM Styles */
+/* Note: These styles must be injected into shadow DOM via JavaScript */
+/* See SimpleFlow.tsx for injection logic */
+/* 
+  :host {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 10px !important;
+    font-weight: 400 !important;
+    color: #000000 !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    min-width: auto !important;
+    pointer-events: none !important;
+  }
+  .ML__container {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column-reverse !important;
+  }
+  .ML__base {
+    font-size: 10px !important;
+    font-weight: 400 !important;
+    color: #000000 !important;
+  }
+*/
+
+/* MathLive Custom Shadow DOM Styles */
+/* Note: These styles must be injected into shadow DOM via JavaScript */
+/* See SimpleFlow.tsx for injection logic */
+/*
+  .ML__container {
+    height: 100% !important;
+  }
+  .ML__toggles {
+    align-self: center !important;
+  }
+  .ML__virtual-keyboard-toggle [title],
+  .ML__virtual-keyboard-toggle [data-tooltip],
+  .ML__virtual-keyboard-toggle [role="tooltip"],
+  .ML__menu-toggle [title],
+  .ML__menu-toggle [data-tooltip],
+  .ML__menu-toggle [role="tooltip"] {
+    z-index: 99999 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+*/

@@ -12,672 +12,102 @@ import {
   Node,
   NodeTypes,
   EdgeTypes,
-  Handle,
-  Position,
   MarkerType,
-  useReactFlow,
   ConnectionLineType,
 } from '@xyflow/react'
 import type { EdgeProps } from '@xyflow/react'
-import { Play, Square } from 'lucide-react'
-// MathLive types are declared in src/types/mathlive.d.ts
+import { MATHLIVE_EDGELABEL_CSS, MATHLIVE_CUSTOM_CSS } from '../utils/shadowDomStyles'
+import { saveEdgesToSession, loadEdgesFromSession, clearEdgesFromSession } from '../utils/storageUtils'
+import { downloadJSON, readJSONFile, selectJSONFile } from '../utils/fileUtils'
+import { handleError, handleWarning } from '../utils/errorHandler'
+import { MathNode, HandleConfig } from './nodes/MathNode'
+import { NODE_CONFIGS } from './nodes/nodeConfig'
+import { ToolbarButton } from './toolbar/ToolbarButton'
+import { TOOLBAR_BUTTONS } from './toolbar/toolbarConfig'
+import { NodeComponentProps } from '../types/nodeTypes'
+import { MathFieldElement } from '../types/mathlive'
+import { NODE_POSITION, NODE_TYPES } from '../constants/nodeConstants'
+// Import math-field type declarations
+import '../types/mathlive.d'
 
-// Helper to check if a handle has a value
-const useHandleValue = (nodeId: string, handleId: string | null, type: 'source' | 'target', edges: Edge[]) => {
-  const hasValue = useMemo(() => {
-    if (!nodeId) {
-      return false
+// Helper function to get CSS variable value
+const getCSSVariable = (variableName: string): string => {
+  if (typeof window !== 'undefined') {
+    return getComputedStyle(document.documentElement).getPropertyValue(variableName).trim()
+  }
+  return ''
+}
+
+// Edge style constants - using CSS variables from index.css
+// These reference CSS custom properties defined in :root
+const getEdgeStyles = () => {
+  const strokeWidth = parseFloat(getCSSVariable('--edge-stroke-width')) || 0.4
+  return {
+    DEFAULT_EDGE_STYLE: { 
+      stroke: getCSSVariable('--edge-stroke-default') || '#000000', 
+      strokeWidth 
+    },
+    SELECTED_EDGE_STYLE: { 
+      stroke: getCSSVariable('--edge-stroke-selected') || '#ef4444', 
+      strokeWidth 
+    },
+    EDGE_STYLE_WITH_DASH: { 
+      stroke: getCSSVariable('--edge-stroke-default') || '#000000', 
+      strokeWidth, 
+      strokeDasharray: getCSSVariable('--edge-stroke-dasharray') || 'none' 
     }
-    
-    if (type === 'source') {
-      const edge = edges.find(e => e.source === nodeId && (handleId === null || e.sourceHandle === handleId))
-      return edge && edge.label && String(edge.label).trim() !== ''
-    } else {
-      const edge = edges.find(e => e.target === nodeId && (handleId === null || e.targetHandle === handleId))
-      return edge && edge.label && String(edge.label).trim() !== ''
+  }
+}
+
+// Initialize edge styles (will be computed on first render)
+const edgeStyles = getEdgeStyles()
+const DEFAULT_EDGE_STYLE = edgeStyles.DEFAULT_EDGE_STYLE
+const SELECTED_EDGE_STYLE = edgeStyles.SELECTED_EDGE_STYLE
+const EDGE_STYLE_WITH_DASH = edgeStyles.EDGE_STYLE_WITH_DASH
+
+/**
+ * Creates a node component based on the provided node type
+ * @param nodeType - The type of node to create
+ * @returns A React component for the specified node type
+ */
+const createNodeComponent = (nodeType: string) => {
+  return ({ selected, id }: NodeComponentProps) => {
+    const config = NODE_CONFIGS[nodeType]
+    if (!config) {
+      handleWarning(`No configuration found for node type: ${nodeType}`, 'createNodeComponent')
+      return null
     }
-  }, [edges, nodeId, handleId, type])
-  
-  return hasValue
-}
-
-// Node Types
-const StartNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue = useHandleValue(id, null, 'source', edges)
   return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-green-600 absolute inset-0 flex items-center justify-center leading-none">
-          <Play size={16} />
-        </div>
-    </div>
-  )
-}
-
-const EndNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue = useHandleValue(id, null, 'target', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-red-600 absolute inset-0 flex items-center justify-center leading-none">
-          <Square size={16} />
-        </div>
-    </div>
-  )
-}
-
-const AddNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input1" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-        }}
+      <MathNode
+        selected={selected}
+        id={id}
+        handles={config.handles as HandleConfig[]}
+        symbol={config.symbol}
       />
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input2" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-blue-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>+</div>
-    </div>
-  )
+    )
+  }
 }
 
-const SubtractNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input1" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-        }}
-      />
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input2" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-orange-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>-</div>
-    </div>
-  )
-}
-
-const MultiplyNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input1" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-        }}
-      />
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input2" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-purple-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>×</div>
-    </div>
-  )
-}
-
-const DivideNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input1" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-        }}
-      />
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input2" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-pink-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>÷</div>
-    </div>
-  )
-}
-
-// New math block components matching the image
-const PowerNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-        <Handle 
-          type="target" 
-          position={Position.Left} 
-          id="input1" 
-          style={{ 
-            background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-          }}
-        />
-        <Handle 
-          type="target" 
-          position={Position.Left} 
-          id="input2" 
-          style={{ 
-            background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-          }}
-        />
-        <Handle 
-          type="source" 
-          position={Position.Right} 
-          style={{ 
-            background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-green-600 text-sm font-bold absolute inset-0 flex items-center justify-center leading-none">
-          <span>p</span><sup className="text-xs">2</sup>
-        </div>
-    </div>
-  )
-}
-
-const SquareRootNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-        <Handle 
-          type="target" 
-          position={Position.Left} 
-          id="input1" 
-          style={{ 
-            background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <Handle 
-          type="source" 
-          position={Position.Right} 
-          style={{ 
-            background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-green-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>√</div>
-    </div>
-  )
-}
-
-const EqualNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input1" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '25%'
-            }}
-          />
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input2" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '75%'
-            }}
-          />
-          <Handle 
-            type="source" 
-            position={Position.Right} 
-            style={{ 
-              background: '#c1fdbf',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              right: '-4px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
-          <div className="text-teal-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>=</div>
-      </div>
-  )
-}
-
-const AssignmentNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input1" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '25%'
-            }}
-          />
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input2" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '75%'
-            }}
-          />
-          <Handle 
-            type="source" 
-            position={Position.Right} 
-            style={{ 
-              background: '#c1fdbf',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              right: '-4px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
-          <div className="text-slate-700 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>↰</div>
-      </div>
-  )
-}
-
-const DerivativeNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input1" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
-          <div className="text-green-600 text-xs font-bold absolute inset-0 flex flex-col items-center justify-center leading-none">
-            <div>dy</div>
-            <div className="border-t border-white">dx</div>
-          </div>
-        </div>
-  )
-}
-
-const IntegralNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-          <Handle 
-            type="target" 
-            position={Position.Left} 
-            id="input1" 
-            style={{ 
-              background: '#f4febd',
-              border: '1px solid #000',
-              width: '8px',
-              height: '8px',
-              left: '-4px',
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          />
-          <div className="text-blue-600 text-xl font-bold absolute inset-0 flex items-center justify-center leading-none" style={{ display: 'contents' }}>∫</div>
-    </div>
-  )
-}
-
-const SubstituteNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasValue1 = useHandleValue(id, 'input1', 'target', edges)
-  const hasValue2 = useHandleValue(id, 'input2', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input1" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '25%'
-        }}
-      />
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input2" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '75%'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-slate-700 text-xs font-bold absolute inset-0 flex items-center justify-center leading-none">Sub</div>
-    </div>
-  )
-}
-
-const CalculateNode = ({ data, selected, id }: { data: any; selected: boolean; id: string }) => {
-  const { getEdges } = useReactFlow()
-  const edges = getEdges()
-  const hasInput = useHandleValue(id, 'input', 'target', edges)
-  const hasOutput = useHandleValue(id, null, 'source', edges)
-  return (
-    <div className={`h-8 w-8 bg-white border rounded-none flex items-center justify-center relative ${selected ? 'border-red-500 border' : 'border-black border'}`}>
-      <Handle 
-        type="target" 
-        position={Position.Left} 
-        id="input" 
-        style={{ 
-          background: '#f4febd',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            left: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-        }}
-      />
-      <Handle 
-        type="source" 
-        position={Position.Right} 
-        style={{ 
-          background: '#c1fdbf',
-            border: '1px solid #000',
-            width: '8px',
-            height: '8px',
-            right: '-4px',
-            top: '50%',
-            transform: 'translateY(-50%)'
-          }}
-        />
-        <div className="text-indigo-600 text-xs font-bold absolute inset-0 flex items-center justify-center leading-none">Cal</div>
-    </div>
-  )
-}
+// Node Types - created from configuration
+const StartNode = createNodeComponent('start')
+const EndNode = createNodeComponent('end')
+const AddNode = createNodeComponent('add')
+const SubtractNode = createNodeComponent('subtract')
+const MultiplyNode = createNodeComponent('multiply')
+const DivideNode = createNodeComponent('divide')
+const PowerNode = createNodeComponent('power')
+const SquareRootNode = createNodeComponent('sqrt')
+const EqualNode = createNodeComponent('equal')
+const AssignmentNode = createNodeComponent('assignment')
+const DerivativeNode = createNodeComponent('derivative')
+const IntegralNode = createNodeComponent('integral')
+const SubstituteNode = createNodeComponent('substitute')
+const CalculateNode = createNodeComponent('calculate')
 
 
 const initialNodes: Node[] = []
 
 const initialEdges: Edge[] = []
-
-const operatorForType: Record<string, string> = {
-  add: '+',
-  subtract: '-',
-  multiply: '×',
-  divide: '÷',
-  power: '^',
-  sqrt: '√',
-  equal: '=',
-  assignment: '↰',
-  derivative: 'd/dx',
-  integral: '∫',
-  substitute: 'sub',
-  calculate: 'calc',
-}
-
-// Very small safe evaluator for + - * / and parentheses
-function evaluateExpressionString(input: string): number {
-  const expr = (input || '').replace(/\s+/g, '')
-  if (!/^[-+*/().\d]+$/.test(expr)) return NaN
-  try {
-    // eslint-disable-next-line no-new-func
-    const val = Function(`"use strict"; return (${expr})`)()
-    return typeof val === 'number' && isFinite(val) ? val : NaN
-  } catch {
-    return NaN
-  }
-}
 
 // Utilities to compute an orthogonal (step) path between source and target
 function getStepPathAndLabel(
@@ -700,17 +130,23 @@ function getStepPathAndLabel(
   return { path, labelX, labelY, goesDown }
 }
 
-// Read-only math field component for edge labels
+/**
+ * Read-only math field component for edge labels
+ * Displays LaTeX expressions using MathLive
+ */
 const MathEdgeLabel: React.FC<{ latex: string }> = ({ latex }) => {
-  const mathFieldRef = useRef<HTMLElement>(null)
+  const mathFieldRef = useRef<MathFieldElement>(null)
 
   useEffect(() => {
-    if (mathFieldRef.current) {
-      const mathField = mathFieldRef.current as any
+    const mathField = mathFieldRef.current
+    if (!mathField) return
+
       mathField.value = latex
       mathField.readOnly = true
       
       // Inject styles into Shadow DOM to make them work
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    
       const injectStyles = () => {
         const shadowRoot = mathField.shadowRoot
         if (shadowRoot) {
@@ -719,61 +155,31 @@ const MathEdgeLabel: React.FC<{ latex: string }> = ({ latex }) => {
           if (!existingStyle) {
             const style = document.createElement('style')
             style.setAttribute('data-mathlive-edgelabel', 'true')
-            style.textContent = `
-              :host {
-                background: transparent !important;
-                border: none !important;
-                padding: 0 !important;
-                font-size: 10px !important;
-                font-weight: 400 !important;
-                color: #000000 !important;
-                display: flex !important;
-                flex-direction: column-reverse !important;
-                min-width: auto !important;
-                pointer-events: none !important;
-              }
-              .ML__container {
-                background: transparent !important;
-                border: none !important;
-                padding: 0 !important;
-                display: flex !important;
-                flex-direction: column-reverse !important;
-              }
-              .ML__base {
-                font-size: 10px !important;
-                font-weight: 400 !important;
-                color: #000000 !important;
-              }
-            `
+          style.textContent = MATHLIVE_EDGELABEL_CSS
             shadowRoot.appendChild(style)
           }
         } else {
           // Retry if shadow root is not ready yet
-          setTimeout(injectStyles, 50)
+        timeoutId = setTimeout(injectStyles, 50)
         }
       }
       
       // Inject styles
       injectStyles()
+
+    // Cleanup function
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
   }, [latex])
 
   return (
     <math-field
-      ref={mathFieldRef as any}
+      ref={mathFieldRef}
       read-only
-      style={{
-        background: 'transparent',
-        border: 'none',
-        padding: '0',
-        fontSize: '10px',
-        fontWeight: '400',
-        color: '#000000',
-        display: 'flex',
-        flexDirection: 'column-reverse',  
-        minWidth: 'auto',
-        pointerEvents: 'none',
-      }}
+      className="mathlive-readonly"
     />
   )
 }
@@ -808,10 +214,10 @@ const MathBezierEdge: React.FC<EdgeProps> = (props) => {
 
   const labelStr = label ? String(label) : ''
 
-  // Override stroke color to light grey when selected
+  // Override stroke color to red when selected
   const edgeStyle = selected
-    ? { ...style, stroke: '#d3d3d3', strokeWidth: 0.4 }
-    : { ...style, stroke: '#000000', strokeWidth: 0.4 }
+    ? { ...style, ...SELECTED_EDGE_STYLE }
+    : { ...style, ...DEFAULT_EDGE_STYLE }
 
   return (
     <>
@@ -820,19 +226,12 @@ const MathBezierEdge: React.FC<EdgeProps> = (props) => {
         <EdgeLabelRenderer>
           <div
             style={{
-              position: 'absolute',
-              // Anchored to left, grows towards right when content is added
+              // Dynamic transform based on position
               transform: showBelow 
                 ? `translate(0%, 0%) translate(${labelX}px, ${labelY + 0}px)`
                 : `translate(0%, -110%) translate(${labelX}px, ${labelY - 0}px)`,
-              pointerEvents: 'all',
-              background: 'transparent',
-              padding: '0px 2px',
-              lineHeight: '1',
-              whiteSpace: 'nowrap',
-              textAlign: 'left',
             }}
-            className="nodrag nopan math-edge-label"
+            className="nodrag nopan math-edge-label edge-label-base"
           >
             <MathEdgeLabel latex={labelStr} />
           </div>
@@ -847,19 +246,24 @@ const SimpleFlow: React.FC = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [nodeId, setNodeId] = useState(1)
   const [nodeCount, setNodeCount] = useState(0)
-  const [computed, setComputed] = useState<{ expr: string; value: number } | null>(null)
   const [expression, setExpression] = useState<string>('')
   const [activeEdgeId, setActiveEdgeId] = useState<string | null>(null)
-  const mathFieldRef = useRef<any>(null)
+  const mathFieldRef = useRef<MathFieldElement>(null)
 
-  // Initialize MathLive field
-  // Initialize MathLive field
+  /**
+   * Initialize MathLive field with event listeners and styles
+   */
   useEffect(() => {
-    if (mathFieldRef.current) {
-      const mathField = mathFieldRef.current as any
-      mathField.addEventListener('input', (event: any) => {
-        setExpression(event.target.value)
-      })
+    const mathField = mathFieldRef.current
+    if (!mathField) return
+
+    // Event handler for input changes
+    const handleInput = (event: Event) => {
+      const target = event.target as MathFieldElement
+      setExpression(target.value)
+    }
+
+    mathField.addEventListener('input', handleInput)
       
       // Ensure the field is ready for input
       mathField.smartMode = true
@@ -867,6 +271,8 @@ const SimpleFlow: React.FC = () => {
       mathField.smartSuperscript = true
 
       // Inject styles into Shadow DOM for internal elements
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    
       const injectStyles = () => {
         const shadowRoot = mathField.shadowRoot
         if (shadowRoot) {
@@ -875,109 +281,43 @@ const SimpleFlow: React.FC = () => {
           if (!existingStyle) {
             const style = document.createElement('style')
             style.setAttribute('data-mathlive-custom', 'true')
-            style.textContent = `
-              .ML__container {
-                height: 100% !important;
-              }
-              .ML__toggles {
-                align-self: center !important;
-              }
-              .ML__virtual-keyboard-toggle [title],
-              .ML__virtual-keyboard-toggle [data-tooltip],
-              .ML__virtual-keyboard-toggle [role="tooltip"],
-              .ML__menu-toggle [title],
-              .ML__menu-toggle [data-tooltip],
-              .ML__menu-toggle [role="tooltip"] {
-                z-index: 99999 !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                pointer-events: auto !important;
-              }
-            `
+          style.textContent = MATHLIVE_CUSTOM_CSS
             shadowRoot.appendChild(style)
           }
         } else {
           // Retry if shadow root is not ready yet
-          setTimeout(injectStyles, 100)
+        timeoutId = setTimeout(injectStyles, 100)
         }
       }
       
       // Try to inject styles immediately, or retry after a short delay
       injectStyles()
 
-      // Add global styles for tooltips that might be rendered outside shadow DOM
-      const addGlobalTooltipStyle = () => {
-        const globalStyleId = 'mathlive-tooltip-style'
-        if (!document.getElementById(globalStyleId)) {
-          const globalStyle = document.createElement('style')
-          globalStyle.id = globalStyleId
-          globalStyle.textContent = `
-            /* Tooltips for MathLive virtual keyboard and menu toggles */
-            [role="tooltip"],
-            [data-tooltip],
-            [class*="tooltip"] {
-              z-index: 99999 !important;
-              visibility: visible !important;
-              opacity: 1 !important;
-              pointer-events: auto !important;
-              position: fixed !important;
-            }
-          `
-          document.head.appendChild(globalStyle)
-        }
+    // Cleanup function
+    return () => {
+      mathField.removeEventListener('input', handleInput)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
-      addGlobalTooltipStyle()
     }
   }, []) // Only run once on mount
 
-  // Update MathLive field value when expression state changes
+  /**
+   * Update MathLive field value when expression state changes
+   */
   useEffect(() => {
-    if (mathFieldRef.current) {
-      const mathField = mathFieldRef.current as any
-      if (mathField.value !== expression) {
+    const mathField = mathFieldRef.current
+    if (mathField && mathField.value !== expression) {
         mathField.value = expression
-      }
     }
   }, [expression])
 
-  // Update edge colors based on whether they have values
-  const updateEdgeColors = useCallback(() => {
-    setEdges((eds) =>
-      eds.map((edge) => {
-        const hasValue = edge.label && String(edge.label).trim() !== ''
-        return {
-          ...edge,
-          style: {
-            stroke: '#000000', // Always black
-            strokeWidth: 0.4
-          }
-        }
-      })
-    )
-  }, [setEdges])
-
-  // Save edges to session storage
-  const saveEdgesToSession = useCallback((edges: Edge[]) => {
-    try {
-      sessionStorage.setItem('flowEdges', JSON.stringify(edges))
-    } catch (error) {
-      // Error saving to session storage
+  // Load edges from session storage on mount
+  useEffect(() => {
+    const savedEdges = loadEdgesFromSession()
+    if (savedEdges.length > 0) {
+      setEdges(savedEdges)
     }
-  }, [])
-
-  // Load edges from session storage
-  const loadEdgesFromSession = useCallback(() => {
-    try {
-      const savedEdges = sessionStorage.getItem('flowEdges')
-      if (savedEdges) {
-        const parsedEdges = JSON.parse(savedEdges)
-        setEdges(parsedEdges)
-        return parsedEdges
-      }
-    } catch (error) {
-      // Error loading from session storage
-    }
-    return []
   }, [setEdges])
 
   // Create nodeTypes - memoized outside component to avoid recreation
@@ -1004,35 +344,6 @@ const SimpleFlow: React.FC = () => {
 
   const getNode = useCallback((id: string) => nodes.find((n) => n.id === id), [nodes])
 
-  // Helper function to compute the value of a node
-  const computeNodeValue = useCallback((nodeId: string): number | null => {
-    const node = getNode(nodeId)
-    if (!node) return null
-
-    // If it's a start node, return 0
-    if (node.type === 'start') return 0
-
-    // For operation nodes, compute their result
-    if (node.type === 'add' || node.type === 'subtract' || node.type === 'multiply' || node.type === 'divide') {
-      const incomingEdges = edges.filter(e => e.target === nodeId)
-      const sortedEdges = incomingEdges.sort((a, b) => (a.targetHandle || '').localeCompare(b.targetHandle || ''))
-      
-      if (sortedEdges.length >= 2) {
-        const leftValue = evaluateExpressionString(String(sortedEdges[0].label || '0'))
-        const rightValue = evaluateExpressionString(String(sortedEdges[1].label || '0'))
-        
-        switch (node.type) {
-          case 'add': return leftValue + rightValue
-          case 'subtract': return leftValue - rightValue
-          case 'multiply': return leftValue * rightValue
-          case 'divide': return rightValue === 0 ? NaN : leftValue / rightValue
-        }
-      }
-    }
-
-    return null
-  }, [getNode, edges])
-
   const onConnect = useCallback(
     (params: Connection) =>
       setEdges((eds) =>
@@ -1044,7 +355,7 @@ const SimpleFlow: React.FC = () => {
             markerEnd: { type: MarkerType.ArrowClosed, width: 30, height: 30 },
             label: '',
             labelShowBg: false,
-            style: { stroke: '#000000', strokeWidth: 0.4 }, // Black by default
+            style: DEFAULT_EDGE_STYLE, // Black by default
           },
           eds,
         ),
@@ -1064,14 +375,17 @@ const SimpleFlow: React.FC = () => {
       setExpression(currentValue)
       
       // Focus the MathLive field immediately
-      setTimeout(() => {
-        if (mathFieldRef.current) {
-          const mathField = mathFieldRef.current as any
+      const timeoutId = setTimeout(() => {
+        const mathField = mathFieldRef.current
+        if (mathField) {
           mathField.focus()
           // Place cursor at the end of the text
           mathField.executeCommand('moveToEnd')
         }
       }, 50)
+      
+      // Note: Timeout cleanup handled by component unmount
+      return () => clearTimeout(timeoutId)
     },
     []
   )
@@ -1089,8 +403,8 @@ const SimpleFlow: React.FC = () => {
       
       // Focus the MathLive field and select all text
       setTimeout(() => {
-        if (mathFieldRef.current) {
-          const mathField = mathFieldRef.current as any
+        const mathField = mathFieldRef.current
+        if (mathField) {
           mathField.focus()
           mathField.executeCommand('selectAll')
         }
@@ -1099,16 +413,20 @@ const SimpleFlow: React.FC = () => {
     []
   )
 
+  /**
+   * Adds a new node to the canvas
+   * @param type - The type of node to add
+   */
   const addNode = useCallback((type: string) => {
     const newNode: Node = {
       id: nodeId.toString(),
       type,
       data: {
-        label: type === 'calculate' ? 'Cal' : type.charAt(0).toUpperCase() + type.slice(1),
+        label: type === NODE_TYPES.CALCULATE ? 'Cal' : type.charAt(0).toUpperCase() + type.slice(1),
       },
       position: {
-        x: 400 + nodeCount * 20,
-        y: 300 + nodeCount * 20,
+        x: NODE_POSITION.BASE_X + nodeCount * NODE_POSITION.OFFSET,
+        y: NODE_POSITION.BASE_Y + nodeCount * NODE_POSITION.OFFSET,
       },
     }
     setNodes((nds) => [...nds, newNode])
@@ -1117,22 +435,29 @@ const SimpleFlow: React.FC = () => {
   }, [nodeId, setNodes, nodeCount])
 
   const deleteSelectedNodes = useCallback(() => {
+    // Check if the active edge is being deleted
+    const selectedEdges = edges.filter((edge) => edge.selected)
+    const isActiveEdgeDeleted = selectedEdges.some((edge) => edge.id === activeEdgeId)
+    
+    // Delete selected nodes
     setNodes((nds) => nds.filter((node) => !node.selected))
-  }, [setNodes])
+    // Delete selected edges
+    setEdges((eds) => eds.filter((edge) => !edge.selected))
+    
+    // Hide expression box if the active edge was deleted
+    if (isActiveEdgeDeleted) {
+      setActiveEdgeId(null)
+      setExpression('')
+    }
+  }, [setNodes, setEdges, edges, activeEdgeId])
 
   const clearCanvas = useCallback(() => {
     setNodes([])
     setEdges([])
     setNodeCount(0)
-    setComputed(null)
     setActiveEdgeId(null)
     setExpression('')
-    // Clear session storage
-    try {
-      sessionStorage.removeItem('flowEdges')
-    } catch (error) {
-      // Error clearing session storage
-    }
+    clearEdgesFromSession()
   }, [setNodes, setEdges])
 
   // Export canvas to JSON
@@ -1144,7 +469,6 @@ const SimpleFlow: React.FC = () => {
         position: node.position,
         data: node.data,
         selected: node.selected || false,
-        // Include any other node properties that should be preserved
       })),
       edges: edges.map(edge => ({
         id: edge.id,
@@ -1157,130 +481,93 @@ const SimpleFlow: React.FC = () => {
         style: edge.style || {},
         markerEnd: edge.markerEnd || { type: MarkerType.ArrowClosed, width: 30, height: 30 },
         animated: edge.animated || false,
-        // Include any other edge properties that should be preserved
       })),
-      nodeId, // To maintain node ID sequence for future additions
+      nodeId,
       nodeCount,
-      version: '1.0', // For future compatibility
+      version: '1.0',
       exportedAt: new Date().toISOString()
     }
     
-    const dataStr = JSON.stringify(canvasData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `canvas-export-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    const filename = `canvas-export-${new Date().toISOString().split('T')[0]}.json`
+    downloadJSON(canvasData, filename)
   }, [nodes, edges, nodeId, nodeCount])
 
   // Import canvas from JSON
-  const importFromJSON = useCallback(() => {
+  const importFromJSON = useCallback(async () => {
     // Check if canvas has existing content
     const hasContent = nodes.length > 0 || edges.length > 0
     
-    // If canvas has content, show confirmation dialog
     if (hasContent) {
       const shouldReplace = window.confirm(
         'There are already nodes in the canvas. Do you want to replace them with the imported file?'
       )
-      
-      if (!shouldReplace) {
-        // User clicked Cancel, abort import
-        return
-      }
+      if (!shouldReplace) return
     }
     
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'application/json,.json'
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
+    try {
+      const file = await selectJSONFile()
+      const canvasData = await readJSONFile(file)
       
-      // Validate file type - only allow JSON files
-      const fileName = file.name.toLowerCase()
-      const fileExtension = fileName.substring(fileName.lastIndexOf('.'))
-      const isValidJson = fileExtension === '.json' || file.type === 'application/json'
-      
-      if (!isValidJson) {
-        alert('Please select a valid JSON file (.json extension required).')
+      // Validate the imported data structure
+      if (!canvasData.nodes || !Array.isArray(canvasData.nodes) || 
+          !canvasData.edges || !Array.isArray(canvasData.edges)) {
+        alert('Invalid file format. Please ensure the file contains nodes and edges arrays.')
         return
       }
       
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        try {
-          const canvasData = JSON.parse(event.target?.result as string)
-          
-          // Validate the imported data structure
-          if (canvasData.nodes && Array.isArray(canvasData.nodes) && 
-              canvasData.edges && Array.isArray(canvasData.edges)) {
-            
-            // Restore nodes with all properties
+      // Restore nodes
             setNodes(canvasData.nodes.map((node: Node) => ({
               ...node,
-              // Ensure all required properties are present
               position: node.position || { x: 0, y: 0 },
               data: node.data || {},
               type: node.type || 'default',
             })))
             
-            // Restore edges with all properties including labels (math expressions)
+      // Restore edges
             setEdges(canvasData.edges.map((edge: Edge) => ({
               ...edge,
-              // Ensure all required properties are present
               type: edge.type || 'mathBezier',
               label: edge.label || '',
-              style: edge.style || { stroke: '#000000', strokeWidth: 0.4 },
+        style: edge.style || DEFAULT_EDGE_STYLE,
               markerEnd: edge.markerEnd || { type: MarkerType.ArrowClosed, width: 30, height: 30 },
               animated: edge.animated || false,
             })))
             
-            // Restore node ID counter if available (for future node additions)
+      // Restore node ID counter
             if (canvasData.nodeId && typeof canvasData.nodeId === 'number') {
               setNodeId(canvasData.nodeId)
             }
             
             // Update node count
-            if (canvasData.nodeCount && typeof canvasData.nodeCount === 'number') {
-              setNodeCount(canvasData.nodeCount)
-            } else {
-              setNodeCount(canvasData.nodes.length)
-            }
+      setNodeCount(canvasData.nodeCount && typeof canvasData.nodeCount === 'number' 
+        ? canvasData.nodeCount 
+        : canvasData.nodes.length)
             
             // Clear active states
             setActiveEdgeId(null)
             setExpression('')
-            setComputed(null)
             
             // Save to session storage
-            try {
-              sessionStorage.setItem('flowEdges', JSON.stringify(canvasData.edges))
-            } catch (error) {
-              // Error saving to session storage
-            }
+      saveEdgesToSession(canvasData.edges)
             
             alert('Canvas imported successfully!')
-          } else {
-            alert('Invalid file format. Please ensure the file contains nodes and edges arrays.')
-          }
         } catch (error) {
-          alert('Error importing file. Please check the file format.')
-          console.error('Import error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Error importing file. Please check the file format.'
+      alert(errorMessage)
+      handleError(error, 'importFromJSON')
         }
-      }
-      reader.readAsText(file)
-    }
-    input.click()
   }, [setNodes, setEdges, nodes, edges])
 
   // Clear active edge when clicking elsewhere
   const onPaneClick = useCallback(() => {
     setActiveEdgeId(null)
+    setExpression('')
+  }, [])
+
+  const onNodeClick = useCallback(() => {
+    // Hide expression box when a node is selected
+    setActiveEdgeId(null)
+    setExpression('')
   }, [])
 
   // Save the current expression and clear active edge
@@ -1293,10 +580,7 @@ const SimpleFlow: React.FC = () => {
             return {
               ...edge,
               label: expression,
-              style: {
-                stroke: '#000000', // Black color
-                strokeWidth: 0.4
-              }
+              style: DEFAULT_EDGE_STYLE
             }
           }
           return edge
@@ -1325,10 +609,10 @@ const SimpleFlow: React.FC = () => {
           // Find the specific operation node based on the operator
           let targetNodeType = ''
           switch (operator) {
-            case '+': targetNodeType = 'add'; break
-            case '-': targetNodeType = 'subtract'; break
-            case '*': targetNodeType = 'multiply'; break
-            case '/': targetNodeType = 'divide'; break
+            case '+': targetNodeType = NODE_TYPES.ADD; break
+            case '-': targetNodeType = NODE_TYPES.SUBTRACT; break
+            case '*': targetNodeType = NODE_TYPES.MULTIPLY; break
+            case '/': targetNodeType = NODE_TYPES.DIVIDE; break
           }
           
           if (targetNodeType) {
@@ -1352,19 +636,13 @@ const SimpleFlow: React.FC = () => {
                   return { 
                     ...edge, 
                     label: leftValue,
-                    style: {
-                      stroke: '#000000', // Always black
-                      strokeWidth: 0.4
-                    }
+                    style: DEFAULT_EDGE_STYLE
                   }
                 } else if (edge.id === sortedEdges[1].id) {
                   return { 
                     ...edge, 
                     label: rightValue,
-                    style: {
-                      stroke: '#000000', // Always black
-                      strokeWidth: 0.4
-                    }
+                    style: DEFAULT_EDGE_STYLE
                   }
                 }
                 return edge
@@ -1381,7 +659,7 @@ const SimpleFlow: React.FC = () => {
     }
   }, [expression, getNode])
 
-  // Update the active edge when expression changes (but don't change color until save)
+  // Update the active edge when expression changes
   useEffect(() => {
     if (activeEdgeId && expression !== undefined) {
       setEdges((eds) =>
@@ -1390,11 +668,7 @@ const SimpleFlow: React.FC = () => {
             return {
               ...edge,
               label: expression,
-              style: {
-                stroke: '#000000', // Always black
-                strokeWidth: 0.4,
-                strokeDasharray: 'none'
-              }
+              style: EDGE_STYLE_WITH_DASH
             }
           }
           return edge
@@ -1402,36 +676,6 @@ const SimpleFlow: React.FC = () => {
       )
     }
   }, [expression, activeEdgeId, setEdges])
-
-  // Update edge styles to show active edge
-  useEffect(() => {
-    setEdges((eds) =>
-      eds.map((edge) => {
-        if (edge.id === activeEdgeId) {
-          // Active edge stays red until saved
-          return {
-            ...edge,
-            style: {
-              stroke: '#000000',
-              strokeWidth: 0.4,
-              strokeDasharray: 'none'
-            }
-          }
-        } else {
-          // Other edges show green only if they have saved values
-          const hasValue = edge.label && String(edge.label).trim() !== ''
-          return {
-            ...edge,
-            style: {
-              stroke: '#000000',
-              strokeWidth: 0.4,
-              strokeDasharray: 'none'
-            }
-          }
-        }
-      })
-    )
-  }, [activeEdgeId, setEdges])
 
   // Trigger diagram update when expression changes
   useEffect(() => {
@@ -1445,400 +689,31 @@ const SimpleFlow: React.FC = () => {
     if (edges.length > 0) {
       saveEdgesToSession(edges)
     }
-  }, [edges, saveEdgesToSession])
+  }, [edges])
 
-  // Load edges from session storage on component mount
-  useEffect(() => {
-    loadEdgesFromSession()
-  }, [loadEdgesFromSession])
-
-  const computeExpressionFromInput = useCallback(() => {
-    // If there's an expression in the input field, compute from that
-    if (expression.trim()) {
-      try {
-        const value = evaluateExpressionString(expression)
-        setComputed({ expr: expression, value })
-        return
-      } catch (error) {
-        alert('Invalid expression. Please check your input.')
-        return
-      }
-    }
-    
-    // Otherwise, compute from the canvas (visual flow)
-    const endNode = nodes.find((n) => n.type === 'end')
-    if (!endNode) {
-      alert('Please add an End node and connect the flow, or enter an expression to compute.')
-      return
-    }
-
-    const incomingTo = (targetId: string) => edges.filter((e) => e.target === targetId)
-
-    const evalFromNode = (nodeId: string): { expr: string; value: number } => {
-      const node = getNode(nodeId)
-      if (!node) return { expr: '0', value: 0 }
-
-      if (node.type === 'add' || node.type === 'subtract' || node.type === 'multiply' || node.type === 'divide' || node.type === 'substitute' || node.type === 'calculate') {
-        const inc = incomingTo(node.id)
-        const sorted = [...inc].sort((a, b) => (a.targetHandle || '').localeCompare(b.targetHandle || ''))
-        const leftEdge = sorted[0]
-        const rightEdge = sorted[1]
-
-        const isOp = (id?: string) => (id ? !!(getNode(id)?.type || '').match(/add|subtract|multiply|divide|substitute|calculate/) : false)
-
-        const leftEval = leftEdge
-          ? (isOp(leftEdge.source)
-              ? evalFromNode(leftEdge.source)
-              : { expr: String(leftEdge.label || '0'), value: evaluateExpressionString(String(leftEdge.label || '0')) })
-          : { expr: '0', value: 0 }
-
-        const rightEval = node.type === 'calculate'
-          ? undefined
-          : rightEdge
-            ? (isOp(rightEdge.source)
-                ? evalFromNode(rightEdge.source)
-                : { expr: String(rightEdge.label || '0'), value: evaluateExpressionString(String(rightEdge.label || '0')) })
-            : { expr: '0', value: 0 }
-
-        let value = 0
-        if (node.type === 'calculate') {
-          value = leftEval.value
-          return { expr: `${leftEval.expr}`, value }
-        }
-
-        switch (node.type) {
-          case 'add':
-            value = leftEval.value + (rightEval?.value || 0)
-            break
-          case 'subtract':
-            value = leftEval.value - (rightEval?.value || 0)
-            break
-          case 'multiply':
-            value = leftEval.value * (rightEval?.value || 0)
-            break
-          case 'divide':
-            value = (rightEval?.value || 0) === 0 ? NaN : leftEval.value / (rightEval?.value || 0)
-            break
-          case 'substitute':
-            value = rightEval?.value || 0
-            break
-        }
-        return { expr: `(${leftEval.expr} ${operatorForType[node.type]} ${rightEval?.expr})`, value }
-      }
-
-      const inc = incomingTo(node.id)
-      if (inc.length > 0) {
-        const text = String(inc[0].label || '0')
-        const val = evaluateExpressionString(text)
-        return { expr: text, value: val }
-      }
-      return { expr: '0', value: 0 }
-    }
-
-    const endIncoming = incomingTo(endNode.id)
-    if (endIncoming.length === 0) {
-      alert('Connect something into the End node to compute.')
-      return
-    }
-
-    const srcNode = getNode(endIncoming[0].source)
-    const result = srcNode ? evalFromNode(srcNode.id) : { expr: String(endIncoming[0].label || '0'), value: evaluateExpressionString(String(endIncoming[0].label || '0')) }
-
-    setComputed(result)
-    setExpression(result.expr)
-  }, [expression, nodes, edges, getNode])
 
 
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="app-container">
       {/* Top Bar - Math Blocks Palette */}
-      <div className="h-20 bg-white border-b border-gray-200 flex items-center px-4 overflow-x-auto">
-        <div className="flex space-x-3 min-w-max">
-          <button onClick={() => addNode('start')} className="flex-shrink-0" title="Start Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-green-600">
-                  <Play size={16} />
-                </div>
-              </div>
-            </div>
-          </button>
-          
-          <button onClick={() => addNode('end')} className="flex-shrink-0" title="End Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-red-600">
-                  <Square size={16} />
-                </div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('add')} className="flex-shrink-0" title="Add Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-blue-600 text-xl font-bold">+</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('subtract')} className="flex-shrink-0" title="Subtract Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-orange-600 text-xl font-bold">-</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('multiply')} className="flex-shrink-0" title="Multiply Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-purple-600 text-xl font-bold">×</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('divide')} className="flex-shrink-0" title="Divide Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-pink-600 text-xl font-bold">÷</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('power')} className="flex-shrink-0" title="Power Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-green-600 text-sm font-bold">
-                  <span>p</span><sup className="text-xs">2</sup>
-                </div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('sqrt')} className="flex-shrink-0" title="Square Root Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-green-600 text-xl font-bold">√</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('equal')} className="flex-shrink-0" title="Equal Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-teal-600 text-xl font-bold">=</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('assignment')} className="flex-shrink-0" title="Assignment Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-slate-700 text-xl font-bold">↰</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('derivative')} className="flex-shrink-0" title="Derivative Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-green-600 text-xs font-bold">
-                  <div>dy</div>
-                  <div className="border-t border-white">dx</div>
-                </div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('integral')} className="flex-shrink-0" title="Integral Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-blue-600 text-xl font-bold">∫</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('substitute')} className="flex-shrink-0" title="Substitute Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handles */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '25%' }}
-                />
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '75%' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-slate-700 text-xs font-bold">Sub</div>
-              </div>
-            </div>
-          </button>
-
-          <button onClick={() => addNode('calculate')} className="flex-shrink-0" title="Calculate Node">
-            <div className="relative">
-              <div className="h-12 w-12 bg-slate-200 border border-slate-300 rounded-none flex items-center justify-center relative">
-                {/* Input handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ left: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                {/* Output handle */}
-                <div 
-                  className="absolute w-2 h-2 bg-white border border-black rounded-full"
-                  style={{ right: '-4px', top: '50%', transform: 'translateY(-50%)' }}
-                />
-                <div className="text-indigo-600 text-xs font-bold">Cal</div>
-              </div>
-            </div>
-          </button>
+      <div className="toolbar-header">
+        <div className="toolbar-buttons-container">
+          {TOOLBAR_BUTTONS.map((buttonConfig) => (
+            <ToolbarButton
+              key={buttonConfig.nodeType}
+              onClick={() => addNode(buttonConfig.nodeType)}
+              title={buttonConfig.title}
+              handles={buttonConfig.handles}
+              symbol={buttonConfig.symbol}
+            />
+          ))}
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex">
+      <div className="main-content">
         {/* Central Canvas */}
-        <div className="flex-1 relative">
+        <div className="canvas-container">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1847,6 +722,7 @@ const SimpleFlow: React.FC = () => {
         onConnect={onConnect}
         onEdgeClick={onEdgeClick}
         onEdgeDoubleClick={onEdgeDoubleClick}
+        onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -1854,7 +730,7 @@ const SimpleFlow: React.FC = () => {
         connectionLineType={ConnectionLineType.Step}
         fitView
         attributionPosition="bottom-left"
-        style={{ width: '100%', height: '100%', backgroundColor: '#ffffff' }}
+        className="react-flow-container"
       >
         <Controls />
       </ReactFlow>
@@ -1862,73 +738,72 @@ const SimpleFlow: React.FC = () => {
         </div>
         
         {/* Right Side Pane */}
-        <div className="w-80 bg-white border-l border-gray-200 p-4">
+        <div className="sidebar">
           
-          <div className="space-y-4">
+          <div className="sidebar-section">
             <div className={`mathlive-section ${activeEdgeId ? 'active' : ''}`}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expression</label>
+              <label className="form-label">Expression</label>
               <math-field
                 ref={mathFieldRef}
-                className="w-full border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                style={{ 
-                  height: 'auto',
-                  width: '100%',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  minHeight: '0px',
-                  overflow: 'visible',
-                  resize: 'none',
-                  boxSizing: 'border-box',
-                  border: '2px solid #d1d5db',
-                  padding: '8px 12px'
-                }}
+                className="mathlive-editable"
                 virtual-keyboard-mode="off"
                 value={expression}
               ></math-field>
             </div>
 
             <div className={`mathlive-section ${activeEdgeId ? 'active' : ''}`}>
-              <div className="space-y-2">
+              <div className="form-section-content-spacing">
                 <button 
                   onClick={saveExpression} 
                   disabled={!activeEdgeId || !expression.trim()}
-                  className="w-full p-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                  className="btn-primary"
+                  aria-label="Save expression to edge"
                 >
                   Save
                 </button>
               </div>
             </div>
             
-            <div className="pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600 mb-2">Canvas Actions</div>
-              <div className="space-y-2">
-                {nodes.some(node => node.selected) && (
-                  <button onClick={deleteSelectedNodes} className="w-full p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors">
+            <div className="form-section">
+              <div className="form-section-title">Canvas Actions</div>
+              <div className="form-section-content">
+                {(nodes.some(node => node.selected) || edges.some(edge => edge.selected)) && (
+                  <button 
+                    onClick={deleteSelectedNodes} 
+                    className="btn-danger"
+                    aria-label="Delete selected nodes and edges"
+                  >
                     Delete Selected
                   </button>
                 )}
-                <button onClick={clearCanvas} className="w-full p-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md transition-colors">
+                <button 
+                  onClick={clearCanvas} 
+                  className="btn-secondary"
+                  aria-label="Clear entire canvas"
+                >
                   Clear Canvas
                 </button>
               </div>
             </div>
             
-            <div className="pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600 mb-2">Canvas Info</div>
-              <div className="text-sm text-gray-500 mb-3">
+            <div className="form-section">
+              <div className="form-section-title">Canvas Info</div>
+              <div className="form-info">
                 Nodes on canvas: {nodes.length}
               </div>
-              <div className="border-t border-gray-200 pt-3 mb-2"></div>
-              <div className="space-y-2">
+              <div className="form-divider"></div>
+              <div className="form-section-content">
                 <button 
                   onClick={exportToJSON} 
-                  className="w-full p-2.5 bg-green-50 hover:bg-green-100 border-2 border-green-600 text-green-700 rounded-lg transition-all font-semibold shadow-sm hover:shadow-md"
+                  className="btn-export"
+                  aria-label="Export canvas to JSON file"
                 >
                   Export to JSON
                 </button>
                 <button 
                   onClick={importFromJSON} 
-                  className="w-full p-2.5 bg-blue-50 hover:bg-blue-100 border-2 border-blue-600 text-blue-700 rounded-lg transition-all font-semibold shadow-sm hover:shadow-md"
+                  className="btn-import"
+                  aria-label="Import canvas from JSON file"
                 >
                   Import from JSON
                 </button>
